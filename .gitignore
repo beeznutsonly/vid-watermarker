@@ -1,0 +1,10 @@
+# Root folder .gitignore
+
+*
+/*
+!overlays.ini
+!defaultwatermark.png
+!watermarker.py
+!.gitignore
+!/tobewatermarked
+!/watermarked
