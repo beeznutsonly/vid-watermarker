@@ -5,7 +5,7 @@ __author__ = "u/beeznutsonly"
 
 """
 Quick python script to batch-watermark .mp4 files in a
-directory using the vlc CLI
+directory using the vlc's transcoding feature
 (as seen on https://www.reddit.com/r/romanticxxx).
 """
 
@@ -122,6 +122,7 @@ def startWatermarking(overlay, originalVideoFileName):
         originalVideoFileName
     )
     
+    # sfilter module determination based on overlay type
     if isinstance(overlay, MarqueeOverlay):
         sfilter = (
             "marq{{"
@@ -221,7 +222,6 @@ def startBatchWatermarking(overlay):
 
     # Loop to traverse through all the videos for transcoding
     for originalVideoFileName in originalVideoFileNames:
-
         startWatermarking(overlay, originalVideoFileName)
 
     # Completo
@@ -277,13 +277,14 @@ def informIfFileNamesInvalid(fileNames):
         return False
 
 
-# Input methods
+# Command building
 # -------------------------------------------------------------------------------
 
 # Build up program command from user input
 def startCommandWizard():
     command = []
     try:
+        # Overlay prompt loop
         while True:
             overlay = input(
                 'What type of watermark do you want?'
@@ -293,6 +294,8 @@ def startCommandWizard():
                 continue
 
             command.append(overlay)
+
+            # Task type prompt loop
             while True:
                 task = input(
                     'What type of task do you want '
@@ -303,8 +306,7 @@ def startCommandWizard():
                 command.append(task)
 
                 if task == 'single':
-                    
-                    # File name prompt loop for single task
+                    # File name prompt loop for 'single' task
                     while True:
 
                         fileName = input(
@@ -318,6 +320,7 @@ def startCommandWizard():
                         break
                     break
                 elif task == 'multiple':
+                    # Prompt for multiple files for 'multiple' task
                     fileNames = input(
                             'Enter a comma-separated list of the'
                             'names of the files '
@@ -340,13 +343,15 @@ def startCommandWizard():
     
     return command
 
-# Execute 
+# Command executor
 def executeCommand(command):
 
+    # Checking validity of command by length
     if len(command) <= 1:
         print('Cannot process incomplete command')
         return
     
+    # Overlay determination
     overlay = command[0]
     if informIfOverlayInvalid(overlay):
         return
@@ -396,8 +401,11 @@ def executeCommand(command):
         section, "opacity"
     )
 
-
+    # Task type validity checks and execution
     task = command[1]
+    if informIfTaskInvalid(task):
+        return
+
     if len(command) == 2:
         if task != 'batch':
             print('Incorrect arguments for task')
@@ -406,22 +414,17 @@ def executeCommand(command):
             startBatchWatermarking(overlayObj)
             return
 
-    if informIfTaskInvalid(task):
-        return
-
     if task == 'single':
         if informIfFileNameInvalid(command[2]):
-            return False
+            return
         startWatermarking(overlayObj, command[2])
 
     elif task == 'multiple':
         if informIfFileNamesInvalid(command[2]):
-            return False
+            return
         for fileName in command[2].split(','):
             startWatermarking(overlayObj, fileName)
         
-    
-
 # -------------------------------------------------------------------------------
 # -------------------------------------------------------------------------------
 
@@ -432,6 +435,7 @@ def executeCommand(command):
 if __name__ == "__main__":
 
     if len(sys.argv) == 1:
+        # If no additional CL arguments provided
         executeCommand(startCommandWizard())
     else:
         executeCommand(sys.argv[1:])
