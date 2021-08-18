@@ -15,7 +15,6 @@ import shlex
 import signal
 import subprocess
 import sys
-import pickle
 
 
 # Class definitions
@@ -33,10 +32,9 @@ class Overlay:
 
     def __init__(
         self,
-        x=20,
-        y=20,
-        position=10,
-        opacity=255,
+        x, y,
+        position,
+        opacity
     ):
 
         self.x = x
@@ -45,32 +43,43 @@ class Overlay:
         self.opacity  = opacity
 
 
-# Class which defines the properties of a marquee watermark
+# Class which defines the properties of a Marquee watermark
 class MarqueeOverlay(Overlay):
 
-    marquee     : str
+    marquee  : str
     size     : int
     color    : str
 
     def __init__(
         self,
         marquee,
-        size=30,
-        color='0xFFFFFF',
-        x=20, y=20,
-        position=10,
-        opacity=255
+        size,
+        color
     ):
-
         self.marquee  = marquee
         self.size     = size
         self.color    = color
+
+
+    def __init__(
+        self,
+        marquee,
+        size,
+        color,
+        x, y,
+        position,
+        opacity
+    ):
+
         super(MarqueeOverlay, self).__init__(
             x, y, position, opacity
         )
+        self.marquee  = marquee
+        self.size     = size
+        self.color    = color
 
 
-# Class which defines the properties of Logo watermark
+# Class which defines the properties of a Logo watermark
 class LogoOverlay(Overlay):
 
     logoFileName : str
@@ -78,15 +87,22 @@ class LogoOverlay(Overlay):
     def __init__(
         self,
         logoFileName,
-        x=20, y=20,
-        position=10,
-        opacity=255
+        x, y,
+        position,
+        opacity
     ):
 
-        self.logoFileName = logoFileName
         super(LogoOverlay, self).__init__(
             x, y, position, opacity
         )
+        self.logoFileName = logoFileName
+
+
+    def __init__(
+        self,
+        logoFileName
+    ):
+        self.logoFileName = logoFileName
 
 
 # Application global variables
@@ -103,7 +119,10 @@ TO_BE_WATERMARKED_DESTINATION = os.path.join(BASE_PATH, 'tobewatermarked')
 # Destination directory for watermarked vids
 WATERMARKED_DESTINATION = os.path.join(BASE_PATH,'watermarked')
 
-# Overlay configuration file details
+# Directory contain all logo overlays
+LOGOS_DIRECTORY = os.path.join(BASE_PATH,'logos')
+
+# Overlay configuration file
 OVERLAYS_CONFIG = os.path.join(BASE_PATH, 'overlays.ini')
 
 
@@ -115,7 +134,7 @@ OVERLAYS_CONFIG = os.path.join(BASE_PATH, 'overlays.ini')
 # Start single-watermarking job
 def startWatermarking(overlay, originalVideoFileName):
     
-    print('Processing: "{}"'.format(originalVideoFileName))
+    print('\nProcessing: "{}"\n'.format(originalVideoFileName))
         
     originalVideoPath = os.path.join(
         TO_BE_WATERMARKED_DESTINATION, 
@@ -133,7 +152,7 @@ def startWatermarking(overlay, originalVideoFileName):
                 "opacity={opacity},"
                 "size={size},"
                 "color={color},"
-                "scale=0"
+                "scale=Auto"
             "}}".format(
                 marquee=overlay.marquee,
                 x=overlay.x,
@@ -152,10 +171,9 @@ def startWatermarking(overlay, originalVideoFileName):
                 "y={y},"
                 "position={position},"
                 "opacity={opacity}"
-                "scale=0"
             "}}".format(
                 logoFilePath=os.path.join(
-                    BASE_PATH,
+                    LOGOS_DIRECTORY,
                     overlay.logoFileName
                 ),
                 x=overlay.x,
@@ -166,7 +184,7 @@ def startWatermarking(overlay, originalVideoFileName):
         )
     else:
         print(
-            "Invalid overlay type '{}' provided"
+            "Invalid overlay type '{}' lightprovided"
             .format(type(overlay))
         )
         return
@@ -233,7 +251,7 @@ def startBatchWatermarking(overlay):
 
 # Check and inform validity of overlay
 def informIfOverlayInvalid(overlay):
-    if not (overlay in ["logo", "marquee"]):
+    if not (overlay in ["logo", "l", "marquee", "m"]):
         print(
             'The overlay "{}" is invalid. '
             'Please check it and try again'
@@ -244,7 +262,7 @@ def informIfOverlayInvalid(overlay):
 
 # Check and inform validity of task
 def informIfTaskInvalid(task):
-    if not (task in ["batch", "single", "multiple"]):
+    if not (task in ["batch", "b", "single", "s", "multiple", "m"]):
         print(
             'The task "{}" is invalid. '
             'Please check it and try again'
@@ -288,9 +306,12 @@ def startCommandWizard():
         while True:
             overlay = input(
                 'What type of watermark do you want?'
-                ' (logo/marquee): '
+                ' (logo [default]/marquee): '
             )
-            if informIfOverlayInvalid(overlay):
+            if (overlay == '' or overlay == '\n'):
+                overlay = 'logo'
+            elif informIfOverlayInvalid(overlay):
+                print('Invalid overlay provided, please try again')
                 continue
 
             command.append(overlay)
@@ -299,13 +320,16 @@ def startCommandWizard():
             while True:
                 task = input(
                     'What type of task do you want '
-                    'performed? (batch/single/multiple): '
+                    'performed? (batch/multiple/single [default]): '
                 )
-                if informIfTaskInvalid(task):
+                if (task == '' or task == '\n'):
+                    task = 'single'
+                elif informIfTaskInvalid(task):
+                    print('Invalid task provided, please try again')
                     continue
                 command.append(task)
 
-                if task == 'single':
+                if (task == 'single' or task == 's'):
                     # File name prompt loop for 'single' task
                     while True:
 
@@ -315,23 +339,27 @@ def startCommandWizard():
                             '(including the extension): '
                         )
                         if informIfFileNameInvalid(fileName):
+                            print(
+                                'Invalid file name provided, '
+                                'please try again'
+                            )
                             continue
                         command.append(fileName)
                         break
                     break
-                elif task == 'multiple':
+                elif (task == 'multiple' or task == 'm'):
                     # Prompt for multiple files for 'multiple' task
                     fileNames = input(
-                            'Enter a comma-separated list of the'
+                            'Enter a comma-separated list of the '
                             'names of the files '
-                            '(including the extensions)'
+                            '(including the extensions) '
                             'you want watermarked: '
                     )
                     for fileName in fileNames.split(','):
-                        validFileNames = ''
-                        if informIfFileNameInvalid(fileName):
-                            validFileNames += fileName + ','
-                    command.append(validFileNames)
+                        validFileNames = []
+                        if not informIfFileNameInvalid(fileName):
+                            validFileNames.append(fileName)
+                    command.append(",".join(validFileNames))
                     break
                 break
             break
@@ -361,7 +389,7 @@ def executeCommand(command):
     with open(OVERLAYS_CONFIG) as file:
         configReader.read_file(file)
 
-    if overlay == 'marquee':
+    if (overlay == 'marquee' or overlay == 'm'):
         section = "Marquee"
         marquee = configReader.get(
             section, "marquee"
@@ -378,7 +406,7 @@ def executeCommand(command):
             color=color
         )
 
-    elif overlay == 'logo':
+    elif (overlay == 'logo' or overlay == 'l'):
         
         section = "Logo"
         logoFileName = configReader.get(
@@ -407,19 +435,19 @@ def executeCommand(command):
         return
 
     if len(command) == 2:
-        if task != 'batch':
+        if (task != 'batch' or task != 'b'):
             print('Incorrect arguments for task')
             return
         else:
             startBatchWatermarking(overlayObj)
             return
 
-    if task == 'single':
+    if (task == 'single' or task == 's'):
         if informIfFileNameInvalid(command[2]):
             return
         startWatermarking(overlayObj, command[2])
 
-    elif task == 'multiple':
+    elif (task == 'multiple' or task == 'm'):
         if informIfFileNamesInvalid(command[2]):
             return
         for fileName in command[2].split(','):

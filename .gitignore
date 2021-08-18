@@ -3,9 +3,8 @@
 *
 /*
 !overlays.ini
-!defaultwatermark.png
 !watermarker.py
 !README.md
-!.gitignore
 !/tobewatermarked
 !/watermarked
+!/logos
