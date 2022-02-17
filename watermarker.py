@@ -184,7 +184,7 @@ def startWatermarking(overlay, originalVideoFileName):
         )
     else:
         print(
-            "Invalid overlay type '{}' lightprovided"
+            "Invalid overlay type '{}' provided"
             .format(type(overlay))
         )
         return
@@ -203,7 +203,7 @@ def startWatermarking(overlay, originalVideoFileName):
 
     # The vlc terminal command to initiate the watermarker
     watermarkerTerminalCommandString = (
-        "cvlc --no-repeat --no-loop "
+        "cvlc --sout-mux-caching=5000 --no-repeat --no-loop "
         "\"{}\" --sout='{}' vlc://quit"
         .format(
             originalVideoPath,
@@ -311,7 +311,6 @@ def startCommandWizard():
             if (overlay == '' or overlay == '\n'):
                 overlay = 'logo'
             elif informIfOverlayInvalid(overlay):
-                print('Invalid overlay provided, please try again')
                 continue
 
             command.append(overlay)
@@ -325,7 +324,6 @@ def startCommandWizard():
                 if (task == '' or task == '\n'):
                     task = 'single'
                 elif informIfTaskInvalid(task):
-                    print('Invalid task provided, please try again')
                     continue
                 command.append(task)
 
@@ -339,10 +337,6 @@ def startCommandWizard():
                             '(including the extension): '
                         )
                         if informIfFileNameInvalid(fileName):
-                            print(
-                                'Invalid file name provided, '
-                                'please try again'
-                            )
                             continue
                         command.append(fileName)
                         break
@@ -355,8 +349,8 @@ def startCommandWizard():
                             '(including the extensions) '
                             'you want watermarked: '
                     )
+                    validFileNames = []
                     for fileName in fileNames.split(','):
-                        validFileNames = []
                         if not informIfFileNameInvalid(fileName):
                             validFileNames.append(fileName)
                     command.append(",".join(validFileNames))
@@ -365,7 +359,7 @@ def startCommandWizard():
             break
                 
     # Handle if forced shutdown requested 
-    except KeyboardInterrupt or EOFError:
+    except (KeyboardInterrupt, EOFError):
         print('Application aborted, now quitting')
         sys.exit(1)
     
